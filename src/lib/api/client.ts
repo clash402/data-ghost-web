@@ -1,0 +1,133 @@
+import type { ZodTypeAny } from "zod";
+
+import { apiEnvelopeSchema } from "@/lib/api/types";
+
+const DEFAULT_ERROR_MESSAGE = "Something went wrong while contacting Data Ghost API.";
+
+type JsonBody = Record<string, unknown>;
+
+export class ApiClientError extends Error {
+  public readonly requestId: string;
+
+  public readonly status: number;
+
+  public readonly details?: unknown;
+
+  constructor(params: {
+    message: string;
+    status: number;
+    requestId: string;
+    details?: unknown;
+  }) {
+    super(params.message);
+    this.name = "ApiClientError";
+    this.status = params.status;
+    this.requestId = params.requestId;
+    this.details = params.details;
+  }
+}
+
+export type ApiResponse<T> = {
+  data: T;
+  requestId: string;
+};
+
+type RequestParams<TSchema extends ZodTypeAny> = {
+  method?: "GET" | "POST";
+  body?: JsonBody | FormData;
+  schema: TSchema;
+  path: string;
+  requestId: string;
+};
+
+function getApiBaseUrl() {
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+
+  if (!baseUrl) {
+    throw new ApiClientError({
+      message: "Missing NEXT_PUBLIC_API_BASE_URL environment variable.",
+      status: 500,
+      requestId: "missing-api-base-url",
+    });
+  }
+
+  return baseUrl.replace(/\/$/, "");
+}
+
+function makeHeaders(requestId: string, body?: JsonBody | FormData) {
+  const headers = new Headers({
+    "X-Request-Id": requestId,
+  });
+
+  if (!(body instanceof FormData)) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  return headers;
+}
+
+async function readJson(response: Response) {
+  const text = await response.text();
+
+  if (!text) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+export async function apiRequest<TSchema extends ZodTypeAny>({
+  method = "GET",
+  body,
+  schema,
+  path,
+  requestId,
+}: RequestParams<TSchema>): Promise<ApiResponse<TSchema["_output"]>> {
+  const url = `${getApiBaseUrl()}${path}`;
+
+  const response = await fetch(url, {
+    method,
+    headers: makeHeaders(requestId, body),
+    body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+  });
+
+  const json = await readJson(response);
+  const envelopeParser = apiEnvelopeSchema(schema);
+  const parsedEnvelope = envelopeParser.safeParse(json);
+
+  const responseRequestId =
+    (parsedEnvelope.success && parsedEnvelope.data.request_id) || requestId;
+
+  if (!response.ok) {
+    const fallbackMessage = `Request failed with status ${response.status}.`;
+    const message =
+      (parsedEnvelope.success && parsedEnvelope.data.error?.message) ||
+      fallbackMessage ||
+      DEFAULT_ERROR_MESSAGE;
+
+    throw new ApiClientError({
+      message,
+      status: response.status,
+      requestId: responseRequestId,
+      details: parsedEnvelope.success ? parsedEnvelope.data.error?.details : json,
+    });
+  }
+
+  if (!parsedEnvelope.success) {
+    throw new ApiClientError({
+      message: "The API returned an unexpected response shape.",
+      status: response.status,
+      requestId: responseRequestId,
+      details: parsedEnvelope.error.flatten(),
+    });
+  }
+
+  return {
+    data: parsedEnvelope.data.data as TSchema["_output"],
+    requestId: responseRequestId,
+  };
+}
