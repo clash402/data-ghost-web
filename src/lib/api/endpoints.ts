@@ -3,8 +3,8 @@ import {
   askRequestSchema,
   askResponseSchema,
   contextUploadSchema,
-  datasetSummarySchema,
-  datasetUploadSchema,
+  datasetSummaryCompatibleSchema,
+  datasetUploadCompatibleSchema,
   type AskRequest,
 } from "@/lib/api/types";
 
@@ -16,7 +16,7 @@ export function uploadDataset(file: File, requestId: string) {
     method: "POST",
     path: "/upload/dataset",
     body: formData,
-    schema: datasetUploadSchema,
+    schema: datasetUploadCompatibleSchema,
     requestId,
   });
 }
@@ -37,7 +37,7 @@ export function uploadContextDocument(file: File, requestId: string) {
 export function getDatasetSummary(requestId: string) {
   return apiRequest({
     path: "/dataset/summary",
-    schema: datasetSummarySchema,
+    schema: datasetSummaryCompatibleSchema,
     requestId,
   });
 }

@@ -27,8 +27,43 @@ export const datasetUploadSchema = z.object({
   name: z.string(),
   rows: z.number(),
   columns: z.array(datasetColumnSchema),
-  created_at: z.string(),
+  created_at: z.string().optional(),
 });
+
+const datasetUploadLegacySchema = z.object({
+  dataset_id: z.string(),
+  table_name: z.string(),
+  rows: z.number(),
+  columns: z.array(z.string()),
+  schema: z.record(z.string(), z.string()).optional(),
+});
+
+function isLegacyDatasetUpload(
+  payload: z.infer<typeof datasetUploadSchema> | z.infer<typeof datasetUploadLegacySchema>
+): payload is z.infer<typeof datasetUploadLegacySchema> {
+  return "table_name" in payload;
+}
+
+export const datasetUploadCompatibleSchema = z
+  .union([datasetUploadSchema, datasetUploadLegacySchema])
+  .transform((payload) => {
+    if (!isLegacyDatasetUpload(payload)) {
+      return payload;
+    }
+
+    const inferredSchema = payload.schema || {};
+
+    return {
+      dataset_id: payload.dataset_id,
+      name: payload.table_name,
+      rows: payload.rows,
+      columns: payload.columns.map((column) => ({
+        name: column,
+        type: inferredSchema[column] || "unknown",
+      })),
+      created_at: undefined,
+    };
+  });
 
 export const contextUploadSchema = z.object({
   doc_id: z.string(),
@@ -47,6 +82,48 @@ export const datasetSummarySchema = z.object({
   stats: z.record(z.string(), z.unknown()).optional(),
   created_at: z.string().optional(),
 });
+
+const datasetSummaryLegacySchema = z.object({
+  dataset_id: z.string(),
+  name: z.string(),
+  table_name: z.string().optional(),
+  rows: z.number(),
+  columns: z.array(z.string()),
+  schema: z.record(z.string(), z.string()).optional(),
+  sample_rows: z.array(z.record(z.string(), z.unknown())).default([]),
+  created_at: z.string().optional(),
+});
+
+function isLegacyDatasetSummary(
+  payload:
+    | z.infer<typeof datasetSummarySchema>
+    | z.infer<typeof datasetSummaryLegacySchema>
+): payload is z.infer<typeof datasetSummaryLegacySchema> {
+  return payload.columns.length === 0 || typeof payload.columns[0] === "string";
+}
+
+export const datasetSummaryCompatibleSchema = z
+  .union([datasetSummarySchema, datasetSummaryLegacySchema])
+  .transform((payload) => {
+    if (!isLegacyDatasetSummary(payload)) {
+      return payload;
+    }
+
+    const inferredSchema = payload.schema || {};
+
+    return {
+      dataset_id: payload.dataset_id,
+      name: payload.name,
+      rows: payload.rows,
+      columns: payload.columns.map((column) => ({
+        name: column,
+        type: inferredSchema[column] || "unknown",
+      })),
+      sample_rows: payload.sample_rows,
+      created_at: payload.created_at,
+      stats: undefined,
+    };
+  });
 
 export const clarificationQuestionSchema = z.object({
   key: z.string(),

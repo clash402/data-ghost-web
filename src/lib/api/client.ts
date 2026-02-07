@@ -66,6 +66,31 @@ function makeHeaders(requestId: string, body?: JsonBody | FormData) {
   return headers;
 }
 
+function extractErrorMessage(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const record = payload as Record<string, unknown>;
+
+  if (typeof record.message === "string") {
+    return record.message;
+  }
+
+  if (typeof record.detail === "string") {
+    return record.detail;
+  }
+
+  if (record.error && typeof record.error === "object") {
+    const nestedError = record.error as Record<string, unknown>;
+    if (typeof nestedError.message === "string") {
+      return nestedError.message;
+    }
+  }
+
+  return null;
+}
+
 async function readJson(response: Response) {
   const text = await response.text();
 
@@ -98,14 +123,19 @@ export async function apiRequest<TSchema extends ZodTypeAny>({
   const json = await readJson(response);
   const envelopeParser = apiEnvelopeSchema(schema);
   const parsedEnvelope = envelopeParser.safeParse(json);
+  const parsedRaw = schema.safeParse(json);
+  const headerRequestId = response.headers.get("X-Request-Id");
 
   const responseRequestId =
-    (parsedEnvelope.success && parsedEnvelope.data.request_id) || requestId;
+    headerRequestId ||
+    (parsedEnvelope.success && parsedEnvelope.data.request_id) ||
+    requestId;
 
   if (!response.ok) {
     const fallbackMessage = `Request failed with status ${response.status}.`;
     const message =
       (parsedEnvelope.success && parsedEnvelope.data.error?.message) ||
+      extractErrorMessage(json) ||
       fallbackMessage ||
       DEFAULT_ERROR_MESSAGE;
 
@@ -118,6 +148,13 @@ export async function apiRequest<TSchema extends ZodTypeAny>({
   }
 
   if (!parsedEnvelope.success) {
+    if (parsedRaw.success) {
+      return {
+        data: parsedRaw.data,
+        requestId: responseRequestId,
+      };
+    }
+
     throw new ApiClientError({
       message: "The API returned an unexpected response shape.",
       status: response.status,
