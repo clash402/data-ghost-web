@@ -146,6 +146,7 @@ export function WorkspacePage() {
       return;
     }
 
+    setQuestion("");
     setResponse(null);
     setPendingQuestion(trimmed);
     setConversationId(undefined);
