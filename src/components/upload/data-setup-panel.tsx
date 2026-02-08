@@ -1,7 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FiDatabase, FiUploadCloud } from "react-icons/fi";
+import {
+  FiChevronDown,
+  FiChevronUp,
+  FiDatabase,
+  FiUploadCloud,
+} from "react-icons/fi";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +20,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { type ContextUpload, type DatasetSummary } from "@/lib/api/types";
+import { cn } from "@/lib/utils";
 import { formatDateTime, formatNumber } from "@/lib/utils/format";
 
 type UploadProgress = {
@@ -23,6 +29,8 @@ type UploadProgress = {
 };
 
 type DataSetupPanelProps = {
+  isExpanded: boolean;
+  onToggleExpanded: () => void;
   summary: DatasetSummary | null;
   isSummaryLoading: boolean;
   summaryError: string | null;
@@ -37,9 +45,12 @@ type DataSetupPanelProps = {
   contextProgress: UploadProgress | null;
   contextUploadError: string | null;
   contextUploadErrorRequestId?: string | null;
+  contextDocCount: number;
 };
 
 export function DataSetupPanel({
+  isExpanded,
+  onToggleExpanded,
   summary,
   isSummaryLoading,
   summaryError,
@@ -54,10 +65,28 @@ export function DataSetupPanel({
   contextProgress,
   contextUploadError,
   contextUploadErrorRequestId,
+  contextDocCount,
 }: DataSetupPanelProps) {
   const [datasetFile, setDatasetFile] = useState<File | null>(null);
   const [contextFiles, setContextFiles] = useState<File[]>([]);
   const columnsPreview = useMemo(() => summary?.columns.slice(0, 6) ?? [], [summary]);
+  const toggleLabel = isExpanded ? "Collapse data setup" : "Expand data setup";
+
+  const statusValue = useMemo(
+    () =>
+      summary
+        ? {
+            dataset: summary.name,
+            rows: formatNumber(summary.rows),
+            columns: formatNumber(summary.columns.length),
+          }
+        : {
+            dataset: "No dataset uploaded",
+            rows: "—",
+            columns: "—",
+          },
+    [summary]
+  );
 
   async function handleDatasetUpload() {
     if (!datasetFile) {
@@ -79,214 +108,267 @@ export function DataSetupPanel({
 
   return (
     <Card className="border-border/60 bg-slate-50/75 shadow-none">
-      <CardHeader className="space-y-2">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <FiDatabase />
-          Data Setup
-        </CardTitle>
-        <CardDescription>
-          Upload a dataset and optional context docs before analysis.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <section className="space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Dataset</h3>
-            <p className="text-xs text-muted-foreground">
-              Upload one CSV dataset for analysis in this v1 workspace.
-            </p>
+      <CardHeader className={cn("space-y-2", !isExpanded && "pb-3")}>
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-2">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <FiDatabase />
+              Data Setup
+            </CardTitle>
+            <CardDescription>
+              Upload a dataset and optional context docs before analysis.
+            </CardDescription>
           </div>
+          <Button
+            type="button"
+            size="icon"
+            variant="ghost"
+            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={onToggleExpanded}
+            aria-label={toggleLabel}
+          >
+            {isExpanded ? <FiChevronUp /> : <FiChevronDown />}
+          </Button>
+        </div>
+      </CardHeader>
+      {isExpanded ? (
+        <CardContent className="space-y-5">
+          <section className="space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Dataset</h3>
+              <p className="text-xs text-muted-foreground">
+                Upload one CSV dataset for analysis in this v1 workspace.
+              </p>
+            </div>
 
-          <div className="rounded-lg border border-border bg-background/80 p-4">
-            {isSummaryLoading ? (
-              <p className="text-sm text-muted-foreground">Loading dataset summary...</p>
-            ) : summary ? (
-              <div className="space-y-3">
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Dataset
-                    </p>
-                    <p className="text-sm font-semibold">{summary.name}</p>
+            <div className="rounded-lg border border-border bg-background/80 p-4">
+              {isSummaryLoading ? (
+                <p className="text-sm text-muted-foreground">Loading dataset summary...</p>
+              ) : summary ? (
+                <div className="space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Dataset
+                      </p>
+                      <p className="text-sm font-semibold">{summary.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Rows
+                      </p>
+                      <p className="text-sm font-semibold">{formatNumber(summary.rows)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                        Columns
+                      </p>
+                      <p className="text-sm font-semibold">
+                        {formatNumber(summary.columns.length)}
+                      </p>
+                    </div>
                   </div>
+
                   <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Rows
+                    <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+                      Inferred Types
                     </p>
-                    <p className="text-sm font-semibold">{formatNumber(summary.rows)}</p>
+                    <div className="flex flex-wrap gap-2">
+                      {columnsPreview.map((column) => (
+                        <Badge key={column.name} variant="secondary">
+                          {column.name}: {column.type}
+                        </Badge>
+                      ))}
+                      {summary.columns.length > columnsPreview.length ? (
+                        <Badge variant="outline">
+                          +{summary.columns.length - columnsPreview.length} more
+                        </Badge>
+                      ) : null}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">
-                      Columns
+
+                  {summary.created_at ? (
+                    <p className="text-xs text-muted-foreground">
+                      Last upload: {formatDateTime(summary.created_at)}
                     </p>
-                    <p className="text-sm font-semibold">
-                      {formatNumber(summary.columns.length)}
-                    </p>
-                  </div>
+                  ) : null}
                 </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No dataset uploaded.</p>
+              )}
+            </div>
 
-                <div>
-                  <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
-                    Inferred Types
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {columnsPreview.map((column) => (
-                      <Badge key={column.name} variant="secondary">
-                        {column.name}: {column.type}
-                      </Badge>
-                    ))}
-                    {summary.columns.length > columnsPreview.length ? (
-                      <Badge variant="outline">
-                        +{summary.columns.length - columnsPreview.length} more
-                      </Badge>
-                    ) : null}
-                  </div>
-                </div>
+            {summaryError ? (
+              <Alert variant="destructive">
+                <AlertTitle>Could not load dataset summary</AlertTitle>
+                <AlertDescription>
+                  {summaryError}
+                  {summaryErrorRequestId ? ` (Request ID: ${summaryErrorRequestId})` : ""}
+                </AlertDescription>
+              </Alert>
+            ) : null}
 
-                {summary.created_at ? (
-                  <p className="text-xs text-muted-foreground">
-                    Last upload: {formatDateTime(summary.created_at)}
-                  </p>
+            <div className="space-y-3">
+              <Input
+                aria-label="Dataset file"
+                type="file"
+                accept=".csv,text/csv"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  setDatasetFile(file || null);
+                }}
+              />
+              <div className="flex items-center gap-3">
+                <Button
+                  onClick={() => {
+                    void handleDatasetUpload();
+                  }}
+                  disabled={!datasetFile || isDatasetUploading}
+                >
+                  <FiUploadCloud className="mr-2" />
+                  {isDatasetUploading ? "Uploading..." : "Upload Dataset"}
+                </Button>
+                {datasetFile ? (
+                  <p className="text-xs text-muted-foreground">{datasetFile.name}</p>
                 ) : null}
               </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">No dataset uploaded.</p>
-            )}
-          </div>
+            </div>
 
-          {summaryError ? (
-            <Alert variant="destructive">
-              <AlertTitle>Could not load dataset summary</AlertTitle>
-              <AlertDescription>
-                {summaryError}
-                {summaryErrorRequestId ? ` (Request ID: ${summaryErrorRequestId})` : ""}
-              </AlertDescription>
-            </Alert>
-          ) : null}
+            {datasetUploadError ? (
+              <Alert variant="destructive">
+                <AlertTitle>Dataset upload failed</AlertTitle>
+                <AlertDescription>
+                  {datasetUploadError}
+                  {datasetUploadErrorRequestId
+                    ? ` (Request ID: ${datasetUploadErrorRequestId})`
+                    : ""}
+                </AlertDescription>
+              </Alert>
+            ) : null}
+          </section>
 
-          <div className="space-y-3">
+          <div className="h-px w-full bg-border/70" />
+
+          <section className="space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">Context Documents</h3>
+              <p className="text-xs text-muted-foreground">
+                Optional docs (PDF/TXT/MD) for metric definitions and business rules.
+              </p>
+            </div>
+
             <Input
+              aria-label="Context files"
               type="file"
-              accept=".csv,text/csv"
+              accept=".pdf,.txt,.md,text/plain,text/markdown,application/pdf"
+              multiple
               onChange={(event) => {
-                const file = event.target.files?.[0];
-                setDatasetFile(file || null);
+                const selectedFiles = event.target.files
+                  ? Array.from(event.target.files)
+                  : [];
+                setContextFiles(selectedFiles);
               }}
             />
             <div className="flex items-center gap-3">
               <Button
                 onClick={() => {
-                  void handleDatasetUpload();
+                  void handleContextUpload();
                 }}
-                disabled={!datasetFile || isDatasetUploading}
+                disabled={contextFiles.length === 0 || isContextUploading}
               >
                 <FiUploadCloud className="mr-2" />
-                {isDatasetUploading ? "Uploading..." : "Upload Dataset"}
+                {isContextUploading ? "Uploading..." : "Upload Context Docs"}
               </Button>
-              {datasetFile ? (
-                <p className="text-xs text-muted-foreground">{datasetFile.name}</p>
+              {contextFiles.length > 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  {contextFiles.length} file(s) selected
+                </p>
               ) : null}
             </div>
-          </div>
 
-          {datasetUploadError ? (
-            <Alert variant="destructive">
-              <AlertTitle>Dataset upload failed</AlertTitle>
-              <AlertDescription>
-                {datasetUploadError}
-                {datasetUploadErrorRequestId
-                  ? ` (Request ID: ${datasetUploadErrorRequestId})`
-                  : ""}
-              </AlertDescription>
-            </Alert>
-          ) : null}
-        </section>
-
-        <div className="h-px w-full bg-border/70" />
-
-        <section className="space-y-4">
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">Context Documents</h3>
-            <p className="text-xs text-muted-foreground">
-              Optional docs (PDF/TXT/MD) for metric definitions and business rules.
-            </p>
-          </div>
-
-          <Input
-            type="file"
-            accept=".pdf,.txt,.md,text/plain,text/markdown,application/pdf"
-            multiple
-            onChange={(event) => {
-              const selectedFiles = event.target.files
-                ? Array.from(event.target.files)
-                : [];
-              setContextFiles(selectedFiles);
-            }}
-          />
-          <div className="flex items-center gap-3">
-            <Button
-              onClick={() => {
-                void handleContextUpload();
-              }}
-              disabled={contextFiles.length === 0 || isContextUploading}
-            >
-              <FiUploadCloud className="mr-2" />
-              {isContextUploading ? "Uploading..." : "Upload Context Docs"}
-            </Button>
-            {contextFiles.length > 0 ? (
+            {contextProgress ? (
               <p className="text-xs text-muted-foreground">
-                {contextFiles.length} file(s) selected
+                Progress: {contextProgress.completed}/{contextProgress.total}
               </p>
             ) : null}
-          </div>
 
-          {contextProgress ? (
-            <p className="text-xs text-muted-foreground">
-              Progress: {contextProgress.completed}/{contextProgress.total}
-            </p>
-          ) : null}
+            {contextUploadError ? (
+              <Alert variant="destructive">
+                <AlertTitle>Context upload failed</AlertTitle>
+                <AlertDescription>
+                  {contextUploadError}
+                  {contextUploadErrorRequestId
+                    ? ` (Request ID: ${contextUploadErrorRequestId})`
+                    : ""}
+                </AlertDescription>
+              </Alert>
+            ) : null}
 
-          {contextUploadError ? (
-            <Alert variant="destructive">
-              <AlertTitle>Context upload failed</AlertTitle>
-              <AlertDescription>
-                {contextUploadError}
-                {contextUploadErrorRequestId
-                  ? ` (Request ID: ${contextUploadErrorRequestId})`
-                  : ""}
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          <div className="space-y-2 rounded-lg border border-border bg-background/80 p-3">
-            <p className="text-sm font-semibold">Uploaded Documents</p>
-            {docs.length === 0 ? (
-              <p className="text-xs text-muted-foreground">No context docs uploaded yet.</p>
+            <div className="space-y-2 rounded-lg border border-border bg-background/80 p-3">
+              <p className="text-sm font-semibold">Uploaded Documents</p>
+              {docs.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No context docs uploaded yet.
+                </p>
+              ) : (
+                <ul className="space-y-2">
+                  {docs.map((doc) => (
+                    <li
+                      key={doc.doc_id}
+                      className="rounded-md border border-border bg-background p-3"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium">{doc.filename}</p>
+                        <Badge variant="outline">{formatDateTime(doc.created_at)}</Badge>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {typeof doc.pages === "number" ? `Pages: ${doc.pages}` : null}
+                        {typeof doc.pages === "number" &&
+                        typeof doc.chunks === "number"
+                          ? " · "
+                          : null}
+                        {typeof doc.chunks === "number" ? `Chunks: ${doc.chunks}` : null}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </section>
+        </CardContent>
+      ) : (
+        <CardContent className="space-y-3 pb-3 pt-0 sm:pb-4">
+          <div className="hidden rounded-lg border border-border/80 bg-background/70 p-3 sm:block">
+            {isSummaryLoading ? (
+              <p className="text-sm text-muted-foreground">Loading dataset summary...</p>
             ) : (
-              <ul className="space-y-2">
-                {docs.map((doc) => (
-                  <li
-                    key={doc.doc_id}
-                    className="rounded-md border border-border bg-background p-3"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-medium">{doc.filename}</p>
-                      <Badge variant="outline">{formatDateTime(doc.created_at)}</Badge>
-                    </div>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {typeof doc.pages === "number" ? `Pages: ${doc.pages}` : null}
-                      {typeof doc.pages === "number" && typeof doc.chunks === "number"
-                        ? " · "
-                        : null}
-                      {typeof doc.chunks === "number" ? `Chunks: ${doc.chunks}` : null}
-                    </p>
-                  </li>
-                ))}
-              </ul>
+              <div className="grid gap-3 text-sm sm:grid-cols-3">
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    Dataset
+                  </p>
+                  <p className="font-medium">{statusValue.dataset}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    Rows
+                  </p>
+                  <p className="font-medium">{statusValue.rows}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    Columns
+                  </p>
+                  <p className="font-medium">{statusValue.columns}</p>
+                </div>
+              </div>
             )}
+            <p className="mt-3 text-xs text-muted-foreground">
+              Context docs: {formatNumber(contextDocCount)}
+            </p>
           </div>
-        </section>
-      </CardContent>
+        </CardContent>
+      )}
     </Card>
   );
 }
