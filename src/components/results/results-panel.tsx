@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { type AskResponse } from "@/lib/api/types";
 import { formatNumber, formatUsd } from "@/lib/utils/format";
 
@@ -21,6 +22,7 @@ type ResultsPanelProps = {
   response: FinalAskResponse | null;
   isRunning: boolean;
   requestId?: string | null;
+  className?: string;
 };
 
 type StructuredNarrative = {
@@ -167,12 +169,17 @@ function CostDetails({ response }: { response: FinalAskResponse }) {
   );
 }
 
-export function ResultsPanel({ response, isRunning, requestId }: ResultsPanelProps) {
+export function ResultsPanel({
+  response,
+  isRunning,
+  requestId,
+  className,
+}: ResultsPanelProps) {
   if (!response) {
     return (
-      <Card>
+      <Card className={cn("border-primary/35 shadow-md shadow-primary/10", className)}>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-xl">
+          <CardTitle className="flex items-center gap-2 text-2xl">
             <FiBarChart2 />
             Results
           </CardTitle>
@@ -190,9 +197,9 @@ export function ResultsPanel({ response, isRunning, requestId }: ResultsPanelPro
 
   return (
     <div className="min-w-0 space-y-4">
-      <Card className="min-w-0">
+      <Card className={cn("min-w-0 border-primary/35 shadow-md shadow-primary/10", className)}>
         <CardHeader>
-          <CardTitle className="text-xl">
+          <CardTitle className="text-2xl">
             {toTitleCase(response.answer.headline || "Analysis summary")}
           </CardTitle>
         </CardHeader>

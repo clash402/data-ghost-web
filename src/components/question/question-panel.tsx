@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { type ClarificationQuestion } from "@/lib/api/types";
 
 type ClarificationValues = Record<string, string>;
@@ -29,6 +30,7 @@ type QuestionPanelProps = {
   isAsking: boolean;
   askError: string | null;
   askErrorRequestId?: string | null;
+  className?: string;
 };
 
 function defaultClarificationValues(questions: ClarificationQuestion[]) {
@@ -65,6 +67,7 @@ export function QuestionPanel({
   isAsking,
   askError,
   askErrorRequestId,
+  className,
 }: QuestionPanelProps) {
   const [clarificationValues, setClarificationValues] = useState<ClarificationValues>({});
 
@@ -75,9 +78,9 @@ export function QuestionPanel({
   const hasClarifications = clarificationQuestions.length > 0;
 
   return (
-    <Card>
+    <Card className={cn("border-primary/45 bg-primary/5 shadow-md shadow-primary/10", className)}>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-xl">
+        <CardTitle className="flex items-center gap-2 text-2xl">
           <FiHelpCircle />
           Ask Data Ghost
         </CardTitle>
