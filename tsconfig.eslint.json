@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "tests/**/*.ts",
+    "next.config.ts",
+    "tailwind.config.ts",
+    "vitest.config.ts",
+    "next-env.d.ts"
+  ]
+}
