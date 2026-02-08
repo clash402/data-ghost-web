@@ -106,7 +106,7 @@ export function QuestionPanel({
           <Label htmlFor="question">Question</Label>
           <Textarea
             id="question"
-            placeholder="Why did revenue drop last week?"
+            placeholder="E.g. Why did revenue drop last week?"
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
             onKeyDown={handleQuestionKeyDown}
