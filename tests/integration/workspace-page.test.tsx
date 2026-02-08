@@ -12,11 +12,13 @@ vi.mock("@/lib/api/endpoints", () => ({
   uploadDataset: vi.fn(),
   uploadContextDocument: vi.fn(),
   askQuestion: vi.fn(),
+  transcribeVoice: vi.fn(),
 }));
 
 const mockedGetDatasetSummary = vi.mocked(endpoints.getDatasetSummary);
 const mockedUploadDataset = vi.mocked(endpoints.uploadDataset);
 const mockedAskQuestion = vi.mocked(endpoints.askQuestion);
+const mockedTranscribeVoice = vi.mocked(endpoints.transcribeVoice);
 
 const defaultSummaryResponse = {
   data: {
@@ -51,6 +53,77 @@ function renderWorkspacePage() {
   );
 }
 
+function setupMicrophoneMocks() {
+  const originalMediaRecorder = globalThis.MediaRecorder;
+  const originalMediaDevices = navigator.mediaDevices;
+  const trackStop = vi.fn();
+  const getUserMediaMock = vi.fn().mockResolvedValue({
+    getTracks: () => [{ stop: trackStop }],
+  } as unknown as MediaStream);
+
+  class MediaRecorderMock {
+    public ondataavailable: ((event: BlobEvent) => void) | null = null;
+
+    public onstop: (() => void) | null = null;
+
+    public onerror: (() => void) | null = null;
+
+    public readonly mimeType = "audio/webm";
+
+    public state: RecordingState = "inactive";
+
+    constructor(_stream: MediaStream) {}
+
+    start() {
+      this.state = "recording";
+    }
+
+    stop() {
+      if (this.state === "inactive") {
+        return;
+      }
+
+      this.state = "inactive";
+      this.ondataavailable?.({
+        data: new Blob(["audio-bytes"], { type: "audio/webm" }),
+      } as BlobEvent);
+      this.onstop?.();
+    }
+  }
+
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: {
+      ...navigator.mediaDevices,
+      getUserMedia: getUserMediaMock,
+    },
+  });
+
+  Object.defineProperty(globalThis, "MediaRecorder", {
+    configurable: true,
+    value: MediaRecorderMock,
+  });
+
+  return {
+    getUserMediaMock,
+    restore: () => {
+      Object.defineProperty(navigator, "mediaDevices", {
+        configurable: true,
+        value: originalMediaDevices,
+      });
+
+      if (originalMediaRecorder) {
+        Object.defineProperty(globalThis, "MediaRecorder", {
+          configurable: true,
+          value: originalMediaRecorder,
+        });
+      } else {
+        Reflect.deleteProperty(globalThis, "MediaRecorder");
+      }
+    },
+  };
+}
+
 describe("WorkspacePage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -61,6 +134,112 @@ describe("WorkspacePage", () => {
       },
       requestId: "req_upload",
     });
+  });
+
+  it("transcribes voice input and appends it to the current question", async () => {
+    mockedGetDatasetSummary.mockResolvedValue(defaultSummaryResponse);
+    mockedTranscribeVoice.mockResolvedValue({
+      data: {
+        text: "for the last seven days",
+      },
+      requestId: "req_voice_ok",
+    });
+
+    const microphone = setupMicrophoneMocks();
+    const user = userEvent.setup();
+
+    renderWorkspacePage();
+
+    await user.type(screen.getByLabelText("Question"), "Show churn trend");
+    await user.click(await screen.findByRole("button", { name: "Start voice input" }));
+    await user.click(screen.getByRole("button", { name: "Stop voice input" }));
+
+    await waitFor(() => {
+      expect(mockedTranscribeVoice).toHaveBeenCalledTimes(1);
+    });
+
+    expect(screen.getByLabelText("Question")).toHaveValue(
+      "Show churn trend for the last seven days"
+    );
+
+    microphone.restore();
+  });
+
+  it("shows transcription errors with request id when voice transcription fails", async () => {
+    mockedGetDatasetSummary.mockResolvedValue(defaultSummaryResponse);
+    mockedTranscribeVoice.mockRejectedValue(
+      new ApiClientError({
+        message: "Transcription unavailable",
+        status: 502,
+        requestId: "req_voice_failed",
+      })
+    );
+
+    const microphone = setupMicrophoneMocks();
+    const user = userEvent.setup();
+
+    renderWorkspacePage();
+
+    await user.click(await screen.findByRole("button", { name: "Start voice input" }));
+    await user.click(screen.getByRole("button", { name: "Stop voice input" }));
+
+    expect(await screen.findByText("Voice transcription failed")).toBeInTheDocument();
+    expect(screen.getByText(/Transcription unavailable/)).toBeInTheDocument();
+    expect(screen.getByText(/req_voice_failed/)).toBeInTheDocument();
+
+    microphone.restore();
+  });
+
+  it("disables Ask while recording and transcribing", async () => {
+    mockedGetDatasetSummary.mockResolvedValue(defaultSummaryResponse);
+
+    let resolveTranscribe:
+      | ((value: Awaited<ReturnType<typeof endpoints.transcribeVoice>>) => void)
+      | undefined;
+    const transcribePromise = new Promise<Awaited<ReturnType<typeof endpoints.transcribeVoice>>>(
+      (resolve) => {
+        resolveTranscribe = resolve;
+      }
+    );
+
+    mockedTranscribeVoice.mockReturnValue(transcribePromise);
+
+    const microphone = setupMicrophoneMocks();
+    const user = userEvent.setup();
+
+    renderWorkspacePage();
+
+    await user.type(screen.getByLabelText("Question"), "Why did revenue change?");
+
+    const askButton = screen.getByRole("button", { name: "Ask" });
+    expect(askButton).toBeEnabled();
+
+    await user.click(await screen.findByRole("button", { name: "Start voice input" }));
+    expect(askButton).toBeDisabled();
+
+    await user.click(screen.getByRole("button", { name: "Stop voice input" }));
+
+    await waitFor(() => {
+      expect(mockedTranscribeVoice).toHaveBeenCalledTimes(1);
+    });
+    expect(askButton).toBeDisabled();
+
+    if (!resolveTranscribe) {
+      throw new Error("Transcribe promise resolver not initialized");
+    }
+
+    resolveTranscribe({
+      data: {
+        text: "last week",
+      },
+      requestId: "req_voice_pending",
+    });
+
+    await waitFor(() => {
+      expect(askButton).toBeEnabled();
+    });
+
+    microphone.restore();
   });
 
   it("treats summary 404 as an empty state instead of an error", async () => {

@@ -1,10 +1,13 @@
-import { FiBarChart2 } from "react-icons/fi";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FiBarChart2, FiSquare, FiVolume2 } from "react-icons/fi";
 
 import { ChartRenderer } from "@/components/results/chart-renderer";
 import { ConfidenceBanner } from "@/components/results/confidence-banner";
 import { DriversSection } from "@/components/results/drivers-section";
 import { ExecutionStatus } from "@/components/results/execution-status";
 import { SqlInspector } from "@/components/results/sql-inspector";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -12,6 +15,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ApiClientError } from "@/lib/api/client";
+import { speakText } from "@/lib/api/endpoints";
+import { createRequestId } from "@/lib/utils/request-id";
 import { cn } from "@/lib/utils";
 import { type AskResponse } from "@/lib/api/types";
 import { formatNumber, formatUsd } from "@/lib/utils/format";
@@ -175,6 +181,114 @@ export function ResultsPanel({
   requestId,
   className,
 }: ResultsPanelProps) {
+  const [isSpeaking, setIsSpeaking] = useState(false);
+  const [isGeneratingAudio, setIsGeneratingAudio] = useState(false);
+  const [ttsError, setTtsError] = useState<string | null>(null);
+  const [ttsErrorRequestId, setTtsErrorRequestId] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioUrlRef = useRef<string | null>(null);
+
+  const spokenText = useMemo(() => {
+    if (!response) {
+      return "";
+    }
+
+    const confidenceReason = response.answer.confidence.reasons.join(" ");
+
+    return [
+      response.answer.headline,
+      response.answer.narrative,
+      `Confidence level: ${response.answer.confidence.level}.`,
+      confidenceReason,
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }, [response]);
+
+  const cleanupAudio = useCallback(() => {
+    if (audioRef.current) {
+      audioRef.current.onended = null;
+      audioRef.current.onerror = null;
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
+
+    if (audioUrlRef.current) {
+      URL.revokeObjectURL(audioUrlRef.current);
+      audioUrlRef.current = null;
+    }
+  }, []);
+
+  const stopAudioPlayback = useCallback(() => {
+    cleanupAudio();
+    setIsSpeaking(false);
+  }, [cleanupAudio]);
+
+  async function handleReadAloud() {
+    if (!spokenText) {
+      return;
+    }
+
+    if (isSpeaking) {
+      stopAudioPlayback();
+      return;
+    }
+
+    setTtsError(null);
+    setTtsErrorRequestId(null);
+    setIsGeneratingAudio(true);
+
+    try {
+      const result = await speakText(
+        {
+          text: spokenText,
+        },
+        createRequestId("voice-speak")
+      );
+
+      cleanupAudio();
+
+      const audioUrl = URL.createObjectURL(result.audioBlob);
+      const audio = new Audio(audioUrl);
+
+      audioUrlRef.current = audioUrl;
+      audioRef.current = audio;
+      audio.onended = () => {
+        stopAudioPlayback();
+      };
+      audio.onerror = () => {
+        setTtsError("Could not play audio response.");
+        setTtsErrorRequestId(result.requestId);
+        stopAudioPlayback();
+      };
+
+      await audio.play();
+      setIsSpeaking(true);
+    } catch (error) {
+      if (error instanceof ApiClientError) {
+        setTtsError(error.message);
+        setTtsErrorRequestId(error.requestId);
+      } else if (error instanceof Error) {
+        setTtsError(error.message);
+      } else {
+        setTtsError("Could not generate voice readback.");
+      }
+    } finally {
+      setIsGeneratingAudio(false);
+    }
+  }
+
+  useEffect(
+    () => () => {
+      cleanupAudio();
+    },
+    [cleanupAudio]
+  );
+
+  useEffect(() => {
+    stopAudioPlayback();
+  }, [response, stopAudioPlayback]);
+
   if (!response) {
     return (
       <Card className={cn("border-primary/35 shadow-md shadow-primary/10", className)}>
@@ -199,12 +313,38 @@ export function ResultsPanel({
     <div className="min-w-0 space-y-4">
       <Card className={cn("min-w-0 border-primary/35 shadow-md shadow-primary/10", className)}>
         <CardHeader>
-          <CardTitle className="text-2xl">
-            {toTitleCase(response.answer.headline || "Analysis summary")}
-          </CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <CardTitle className="text-2xl">
+              {toTitleCase(response.answer.headline || "Analysis summary")}
+            </CardTitle>
+            <Button
+              type="button"
+              variant={isSpeaking ? "secondary" : "outline"}
+              onClick={() => {
+                void handleReadAloud();
+              }}
+              disabled={isGeneratingAudio}
+            >
+              {isSpeaking ? <FiSquare className="mr-2" /> : <FiVolume2 className="mr-2" />}
+              {isSpeaking
+                ? "Stop"
+                : isGeneratingAudio
+                  ? "Generating audio..."
+                  : "Read Aloud"}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-3 pt-0">
           <NarrativeContent narrative={response.answer.narrative} />
+          {ttsError ? (
+            <Alert variant="destructive">
+              <AlertTitle>Readback failed</AlertTitle>
+              <AlertDescription>
+                {ttsError}
+                {ttsErrorRequestId ? ` (Request ID: ${ttsErrorRequestId})` : ""}
+              </AlertDescription>
+            </Alert>
+          ) : null}
         </CardContent>
         {requestId ? (
           <CardContent className="pt-0">
