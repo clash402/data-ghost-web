@@ -188,7 +188,7 @@ export function WorkspacePage() {
         </header>
 
         <div className="grid gap-6 lg:grid-cols-[1.05fr_1fr]">
-          <div className="space-y-6">
+          <div className="min-w-0 space-y-6">
             <DatasetPanel
               summary={datasetSummaryQuery.data ?? null}
               isSummaryLoading={datasetSummaryQuery.isLoading}
@@ -233,7 +233,7 @@ export function WorkspacePage() {
             />
           </div>
 
-          <div className="space-y-6">
+          <div className="min-w-0 space-y-6">
             <QuestionPanel
               question={question}
               setQuestion={setQuestion}

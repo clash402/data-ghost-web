@@ -23,6 +23,116 @@ type ResultsPanelProps = {
   requestId?: string | null;
 };
 
+type StructuredNarrative = {
+  question?: string;
+  summary?: string;
+  top_results?: Array<{
+    label?: string;
+  }>;
+};
+
+function toTitleCase(value: string) {
+  return value
+    .replace(/[_-]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function parseStructuredNarrative(narrative: string): StructuredNarrative | null {
+  const trimmed = narrative.trim();
+
+  const withoutFence = trimmed
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/```$/, "")
+    .trim();
+
+  const candidates = [withoutFence];
+
+  if (
+    (withoutFence.startsWith('"') && withoutFence.endsWith('"')) ||
+    (withoutFence.startsWith("'") && withoutFence.endsWith("'"))
+  ) {
+    candidates.push(withoutFence.slice(1, -1));
+  }
+
+  const parsedStructured = candidates
+    .filter((candidate) => candidate.startsWith("{") || candidate.startsWith("["))
+    .map((candidate) => {
+      try {
+        const parsed = JSON.parse(candidate) as unknown;
+
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          return null;
+        }
+
+        return parsed as StructuredNarrative;
+      } catch {
+        return null;
+      }
+    })
+    .find((parsed): parsed is StructuredNarrative => Boolean(parsed));
+
+  if (parsedStructured) {
+    return parsedStructured;
+  }
+
+  const questionMatch = withoutFence.match(/["']question["']\s*:\s*["']([^"']+)["']/i);
+  const summaryMatch = withoutFence.match(/["']summary["']\s*:\s*["']([^"']+)["']/i);
+  const labelMatches = Array.from(
+    withoutFence.matchAll(/["']label["']\s*:\s*["']([^"']+)["']/gi)
+  ).map((match) => match[1]);
+
+  if (questionMatch || summaryMatch || labelMatches.length > 0) {
+    return {
+      question: questionMatch?.[1],
+      summary: summaryMatch?.[1],
+      top_results: labelMatches.map((label) => ({ label })),
+    };
+  }
+
+  return null;
+}
+
+function NarrativeContent({ narrative }: { narrative: string }) {
+  const structured = parseStructuredNarrative(narrative);
+
+  if (!structured) {
+    return <p>{narrative}</p>;
+  }
+
+  const labels = (structured.top_results || [])
+    .map((result) => result.label?.trim())
+    .filter((label): label is string => Boolean(label));
+
+  return (
+    <div className="space-y-2 text-sm text-muted-foreground">
+      {structured.summary ? <p>{structured.summary}</p> : null}
+      {structured.question ? (
+        <p>
+          <span className="font-medium text-foreground">Question interpreted:</span>{" "}
+          {structured.question}
+        </p>
+      ) : null}
+      {labels.length > 0 ? (
+        <div>
+          <p className="font-medium text-foreground">Analyses run:</p>
+          <ul className="list-disc pl-5">
+            {labels.slice(0, 5).map((label) => (
+              <li key={label}>{toTitleCase(label)}</li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p>
+          Structured analysis payload received. Result details were normalized for
+          display.
+        </p>
+      )}
+    </div>
+  );
+}
+
 function CostDetails({ response }: { response: FinalAskResponse }) {
   if (!response.answer.cost) {
     return null;
@@ -79,12 +189,16 @@ export function ResultsPanel({ response, isRunning, requestId }: ResultsPanelPro
   }
 
   return (
-    <div className="space-y-4">
-      <Card>
+    <div className="min-w-0 space-y-4">
+      <Card className="min-w-0">
         <CardHeader>
-          <CardTitle className="text-xl">{response.answer.headline}</CardTitle>
-          <CardDescription>{response.answer.narrative}</CardDescription>
+          <CardTitle className="text-xl">
+            {toTitleCase(response.answer.headline || "Analysis summary")}
+          </CardTitle>
         </CardHeader>
+        <CardContent className="space-y-3 pt-0">
+          <NarrativeContent narrative={response.answer.narrative} />
+        </CardContent>
         {requestId ? (
           <CardContent className="pt-0">
             <p className="text-xs text-muted-foreground">Request ID: {requestId}</p>

@@ -37,23 +37,25 @@ export function SqlInspector({ statements }: SqlInspectorProps) {
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0">
-        <CardTitle className="text-lg">SQL Inspector</CardTitle>
+    <Card className="min-w-0 overflow-hidden">
+      <CardHeader className="flex min-w-0 flex-row items-center justify-between space-y-0">
+        <CardTitle className="min-w-0 text-lg">SQL Inspector</CardTitle>
         <Button variant="outline" size="sm" onClick={() => setIsOpen((value) => !value)}>
           <FiCode className="mr-1.5" />
           {isOpen ? "Hide" : "Show"}
         </Button>
       </CardHeader>
       {isOpen ? (
-        <CardContent className="space-y-3">
+        <CardContent className="min-w-0 space-y-3">
           {statements.map((statement) => (
             <div
               key={statement.label}
-              className="rounded-lg border border-border bg-muted/30 p-3"
+              className="min-w-0 overflow-hidden rounded-lg border border-border bg-muted/30 p-3"
             >
               <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="text-sm font-semibold">{statement.label}</p>
+                <p className="min-w-0 truncate text-sm font-semibold">
+                  {statement.label}
+                </p>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -69,7 +71,7 @@ export function SqlInspector({ statements }: SqlInspectorProps) {
                   {copiedLabel === statement.label ? "Copied" : "Copy"}
                 </Button>
               </div>
-              <pre className="overflow-x-auto rounded-md bg-slate-900 p-3 text-xs text-slate-100">
+              <pre className="max-w-full overflow-x-auto whitespace-pre-wrap break-all rounded-md bg-slate-900 p-3 text-xs text-slate-100">
                 {statement.query}
               </pre>
             </div>
