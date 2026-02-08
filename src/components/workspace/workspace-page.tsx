@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { FiActivity } from "react-icons/fi";
 
@@ -62,6 +62,8 @@ export function WorkspacePage() {
   const [contextDocs, setContextDocs] = useState<ContextUpload[]>([]);
   const [contextProgress, setContextProgress] = useState<UploadProgress | null>(null);
   const [lastAskRequestId, setLastAskRequestId] = useState<string | null>(null);
+  const [isSetupExpanded, setIsSetupExpanded] = useState(true);
+  const [hasUserToggledSetup, setHasUserToggledSetup] = useState(false);
 
   const datasetSummaryQuery = useQuery({
     queryKey: queryKeys.datasetSummary,
@@ -118,8 +120,35 @@ export function WorkspacePage() {
     return null;
   }, [askMutation.error]);
 
+  const hasSetupErrors =
+    datasetSummaryQuery.isError ||
+    datasetUploadMutation.isError ||
+    contextUploadMutation.isError;
+
+  useEffect(() => {
+    if (datasetSummaryQuery.isLoading) {
+      return;
+    }
+
+    if (hasSetupErrors) {
+      setIsSetupExpanded(true);
+      return;
+    }
+
+    if (!hasUserToggledSetup) {
+      setIsSetupExpanded(!datasetSummaryQuery.data);
+    }
+  }, [
+    datasetSummaryQuery.data,
+    datasetSummaryQuery.isLoading,
+    hasSetupErrors,
+    hasUserToggledSetup,
+  ]);
+
   async function handleDatasetUpload(file: File) {
     await datasetUploadMutation.mutateAsync(file);
+    setHasUserToggledSetup(false);
+    setIsSetupExpanded(false);
   }
 
   async function handleContextUpload(files: File[]) {
@@ -169,6 +198,11 @@ export function WorkspacePage() {
     });
   }
 
+  function handleSetupToggle() {
+    setHasUserToggledSetup(true);
+    setIsSetupExpanded((current) => !current);
+  }
+
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(13,148,136,0.13),_transparent_40%),linear-gradient(180deg,#f8fafc_0%,#ffffff_50%,#f8fafc_100%)] px-4 py-8 sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl space-y-6">
@@ -187,9 +221,11 @@ export function WorkspacePage() {
           </p>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[2fr_3fr]">
-          <div className="order-2 min-w-0 space-y-6 lg:order-1">
+        <div className="grid gap-6 lg:grid-cols-[3fr_7fr]">
+          <div className="order-1 min-w-0 space-y-6">
             <DataSetupPanel
+              isExpanded={isSetupExpanded}
+              onToggleExpanded={handleSetupToggle}
               summary={datasetSummaryQuery.data ?? null}
               isSummaryLoading={datasetSummaryQuery.isLoading}
               summaryError={
@@ -228,10 +264,11 @@ export function WorkspacePage() {
                   ? toRequestId(contextUploadMutation.error)
                   : null
               }
+              contextDocCount={contextDocs.length}
             />
           </div>
 
-          <div className="order-1 min-w-0 space-y-6 lg:order-2">
+          <div className="order-2 min-w-0 space-y-6">
             <QuestionPanel
               question={question}
               setQuestion={setQuestion}
