@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type KeyboardEvent, useEffect, useState } from "react";
 import { FiHelpCircle, FiSend } from "react-icons/fi";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -76,6 +76,19 @@ export function QuestionPanel({
   }, [clarificationQuestions]);
 
   const hasClarifications = clarificationQuestions.length > 0;
+  const canSubmitQuestion = canAsk && !isAsking && question.trim().length > 0;
+
+  function handleQuestionKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey || event.nativeEvent.isComposing) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (canSubmitQuestion) {
+      void onAsk();
+    }
+  }
 
   return (
     <Card className={cn("border-primary/45 bg-primary/5 shadow-md shadow-primary/10", className)}>
@@ -96,6 +109,7 @@ export function QuestionPanel({
             placeholder="Why did revenue drop last week?"
             value={question}
             onChange={(event) => setQuestion(event.target.value)}
+            onKeyDown={handleQuestionKeyDown}
           />
         </div>
 
@@ -103,7 +117,7 @@ export function QuestionPanel({
           onClick={() => {
             void onAsk();
           }}
-          disabled={!canAsk || isAsking || question.trim().length === 0}
+          disabled={!canSubmitQuestion}
         >
           <FiSend className="mr-2" />
           {isAsking ? "Analyzing..." : "Ask"}
