@@ -6,8 +6,7 @@ import { FiActivity } from "react-icons/fi";
 
 import { QuestionPanel } from "@/components/question/question-panel";
 import { ResultsPanel } from "@/components/results/results-panel";
-import { ContextPanel } from "@/components/upload/context-panel";
-import { DatasetPanel } from "@/components/upload/dataset-panel";
+import { DataSetupPanel } from "@/components/upload/data-setup-panel";
 import { ApiClientError } from "@/lib/api/client";
 import {
   askQuestion,
@@ -187,9 +186,9 @@ export function WorkspacePage() {
           </p>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[1.05fr_1fr]">
-          <div className="min-w-0 space-y-6">
-            <DatasetPanel
+        <div className="grid gap-6 lg:grid-cols-[2fr_3fr]">
+          <div className="order-2 min-w-0 space-y-6 lg:order-1">
+            <DataSetupPanel
               summary={datasetSummaryQuery.data ?? null}
               isSummaryLoading={datasetSummaryQuery.isLoading}
               summaryError={
@@ -202,30 +201,28 @@ export function WorkspacePage() {
                   ? toRequestId(datasetSummaryQuery.error)
                   : null
               }
-              onUpload={handleDatasetUpload}
-              isUploading={datasetUploadMutation.isPending}
-              uploadError={
+              onDatasetUpload={handleDatasetUpload}
+              isDatasetUploading={datasetUploadMutation.isPending}
+              datasetUploadError={
                 datasetUploadMutation.isError
                   ? toErrorMessage(datasetUploadMutation.error)
                   : null
               }
-              uploadErrorRequestId={
+              datasetUploadErrorRequestId={
                 datasetUploadMutation.isError
                   ? toRequestId(datasetUploadMutation.error)
                   : null
               }
-            />
-            <ContextPanel
               docs={contextDocs}
-              onUpload={handleContextUpload}
-              isUploading={contextUploadMutation.isPending}
-              progress={contextProgress}
-              uploadError={
+              onContextUpload={handleContextUpload}
+              isContextUploading={contextUploadMutation.isPending}
+              contextProgress={contextProgress}
+              contextUploadError={
                 contextUploadMutation.isError
                   ? toErrorMessage(contextUploadMutation.error)
                   : null
               }
-              uploadErrorRequestId={
+              contextUploadErrorRequestId={
                 contextUploadMutation.isError
                   ? toRequestId(contextUploadMutation.error)
                   : null
@@ -233,7 +230,7 @@ export function WorkspacePage() {
             />
           </div>
 
-          <div className="min-w-0 space-y-6">
+          <div className="order-1 min-w-0 space-y-6 lg:order-2">
             <QuestionPanel
               question={question}
               setQuestion={setQuestion}
@@ -244,11 +241,13 @@ export function WorkspacePage() {
               isAsking={askMutation.isPending}
               askError={askMutation.isError ? toErrorMessage(askMutation.error) : null}
               askErrorRequestId={askMutation.isError ? askErrorRequestId : null}
+              className="border-primary/50 bg-primary/5 shadow-lg shadow-primary/10"
             />
             <ResultsPanel
               response={response}
               isRunning={askMutation.isPending}
               requestId={lastAskRequestId}
+              className="border-primary/40 bg-white shadow-md shadow-primary/10"
             />
           </div>
         </div>

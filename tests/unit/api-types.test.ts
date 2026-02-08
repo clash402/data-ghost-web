@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   apiEnvelopeSchema,
   askResponseSchema,
+  datasetSummaryCompatibleSchema,
   datasetSummarySchema,
+  datasetUploadCompatibleSchema,
 } from "@/lib/api/types";
 
 describe("API schemas", () => {
@@ -42,5 +44,43 @@ describe("API schemas", () => {
     if (parsed.success) {
       expect(parsed.data.needs_clarification).toBe(true);
     }
+  });
+
+  it("normalizes legacy dataset upload payloads", () => {
+    const parsed = datasetUploadCompatibleSchema.parse({
+      dataset_id: "ds_legacy",
+      table_name: "legacy_orders",
+      rows: 12,
+      columns: ["order_date", "revenue", "region"],
+      schema: {
+        order_date: "date",
+        revenue: "number",
+      },
+    });
+
+    expect(parsed.name).toBe("legacy_orders");
+    expect(parsed.columns).toEqual([
+      { name: "order_date", type: "date" },
+      { name: "revenue", type: "number" },
+      { name: "region", type: "unknown" },
+    ]);
+  });
+
+  it("normalizes legacy dataset summary payloads", () => {
+    const parsed = datasetSummaryCompatibleSchema.parse({
+      dataset_id: "ds_legacy",
+      name: "orders.csv",
+      rows: 3,
+      columns: ["order_date", "revenue"],
+      schema: {
+        order_date: "date",
+      },
+    });
+
+    expect(parsed.columns).toEqual([
+      { name: "order_date", type: "date" },
+      { name: "revenue", type: "unknown" },
+    ]);
+    expect(parsed.sample_rows).toEqual([]);
   });
 });
