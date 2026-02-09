@@ -40,6 +40,19 @@ type RequestParams<TSchema extends ZodTypeAny> = {
   requestId: string;
 };
 
+type BinaryRequestParams = {
+  method?: "GET" | "POST";
+  body?: JsonBody | FormData;
+  path: string;
+  requestId: string;
+  accept?: string;
+};
+
+export type ApiBinaryResponse = {
+  audioBlob: Blob;
+  requestId: string;
+};
+
 function getApiBaseUrl() {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
@@ -54,13 +67,17 @@ function getApiBaseUrl() {
   return baseUrl.replace(/\/$/, "");
 }
 
-function makeHeaders(requestId: string, body?: JsonBody | FormData) {
+function makeHeaders(requestId: string, body?: JsonBody | FormData, accept?: string) {
   const headers = new Headers({
     "X-Request-Id": requestId,
   });
 
   if (!(body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
+  }
+
+  if (accept) {
+    headers.set("Accept", accept);
   }
 
   return headers;
@@ -105,6 +122,28 @@ async function readJson(response: Response) {
   }
 }
 
+function extractRequestId(payload: unknown) {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  const record = payload as Record<string, unknown>;
+
+  if (typeof record.request_id === "string") {
+    return record.request_id;
+  }
+
+  if (
+    record.data &&
+    typeof record.data === "object" &&
+    typeof (record.data as Record<string, unknown>).request_id === "string"
+  ) {
+    return (record.data as Record<string, unknown>).request_id as string;
+  }
+
+  return null;
+}
+
 export async function apiRequest<TSchema extends ZodTypeAny>({
   method = "GET",
   body,
@@ -129,6 +168,7 @@ export async function apiRequest<TSchema extends ZodTypeAny>({
   const responseRequestId =
     headerRequestId ||
     (parsedEnvelope.success && parsedEnvelope.data.request_id) ||
+    extractRequestId(json) ||
     requestId;
 
   if (!response.ok) {
@@ -165,6 +205,43 @@ export async function apiRequest<TSchema extends ZodTypeAny>({
 
   return {
     data: parsedEnvelope.data.data as TSchema["_output"],
+    requestId: responseRequestId,
+  };
+}
+
+export async function apiBinaryRequest({
+  method = "POST",
+  body,
+  path,
+  requestId,
+  accept = "audio/mpeg",
+}: BinaryRequestParams): Promise<ApiBinaryResponse> {
+  const url = `${getApiBaseUrl()}${path}`;
+
+  const response = await fetch(url, {
+    method,
+    headers: makeHeaders(requestId, body, accept),
+    body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
+  });
+
+  const json = await readJson(response.clone());
+  const responseRequestId =
+    response.headers.get("X-Request-Id") || extractRequestId(json) || requestId;
+
+  if (!response.ok) {
+    const fallbackMessage = `Request failed with status ${response.status}.`;
+    const message = extractErrorMessage(json) || fallbackMessage || DEFAULT_ERROR_MESSAGE;
+
+    throw new ApiClientError({
+      message,
+      status: response.status,
+      requestId: responseRequestId,
+      details: json,
+    });
+  }
+
+  return {
+    audioBlob: await response.blob(),
     requestId: responseRequestId,
   };
 }

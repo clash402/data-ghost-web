@@ -11,6 +11,7 @@ import { ApiClientError } from "@/lib/api/client";
 import {
   askQuestion,
   getDatasetSummary,
+  transcribeVoice,
   uploadContextDocument,
   uploadDataset,
 } from "@/lib/api/endpoints";
@@ -120,6 +121,39 @@ export function WorkspacePage() {
     return null;
   }, [askMutation.error]);
 
+  const voiceTranscribeMutation = useMutation({
+    mutationFn: (audioBlob: Blob) => {
+      const audioFile = new File([audioBlob], "voice-input.webm", {
+        type: audioBlob.type || "audio/webm",
+      });
+      return transcribeVoice(audioFile, createRequestId("voice-transcribe"));
+    },
+    onSuccess: (result) => {
+      const transcript = result.data.text.trim();
+
+      if (!transcript) {
+        return;
+      }
+
+      setQuestion((currentQuestion) => {
+        const trimmedCurrent = currentQuestion.trim();
+        if (!trimmedCurrent) {
+          return transcript;
+        }
+
+        return `${trimmedCurrent} ${transcript}`;
+      });
+    },
+  });
+
+  const voiceTranscribeErrorRequestId = useMemo(() => {
+    if (voiceTranscribeMutation.error instanceof ApiClientError) {
+      return voiceTranscribeMutation.error.requestId;
+    }
+
+    return null;
+  }, [voiceTranscribeMutation.error]);
+
   const hasSetupErrors =
     datasetSummaryQuery.isError ||
     datasetUploadMutation.isError ||
@@ -198,6 +232,10 @@ export function WorkspacePage() {
     });
   }
 
+  async function handleVoiceTranscribe(audioBlob: Blob) {
+    await voiceTranscribeMutation.mutateAsync(audioBlob);
+  }
+
   function handleSetupToggle() {
     setHasUserToggledSetup(true);
     setIsSetupExpanded((current) => !current);
@@ -273,12 +311,22 @@ export function WorkspacePage() {
               question={question}
               setQuestion={setQuestion}
               onAsk={handleAsk}
+              onVoiceTranscribe={handleVoiceTranscribe}
               onSubmitClarifications={handleClarificationSubmit}
               clarificationQuestions={clarificationQuestions}
               canAsk={Boolean(datasetSummaryQuery.data)}
               isAsking={askMutation.isPending}
+              isTranscribing={voiceTranscribeMutation.isPending}
               askError={askMutation.isError ? toErrorMessage(askMutation.error) : null}
               askErrorRequestId={askMutation.isError ? askErrorRequestId : null}
+              transcribeError={
+                voiceTranscribeMutation.isError
+                  ? toErrorMessage(voiceTranscribeMutation.error)
+                  : null
+              }
+              transcribeErrorRequestId={
+                voiceTranscribeMutation.isError ? voiceTranscribeErrorRequestId : null
+              }
               className="border-primary/50 bg-primary/5 shadow-lg shadow-primary/10"
             />
             <ResultsPanel

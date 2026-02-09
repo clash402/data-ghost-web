@@ -91,6 +91,36 @@ async function stubApi(page: Page, askMode: "success" | "error") {
       return;
     }
 
+    if (url.pathname === "/voice/transcribe" && request.method() === "POST") {
+      await route.fulfill({
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "content-type": "application/json",
+          "x-request-id": "req_voice_transcribe",
+        },
+        body: JSON.stringify({
+          data: {
+            text: "Why did revenue drop last week?",
+          },
+        }),
+      });
+      return;
+    }
+
+    if (url.pathname === "/voice/speak" && request.method() === "POST") {
+      await route.fulfill({
+        status: 200,
+        headers: {
+          ...corsHeaders,
+          "content-type": "audio/mpeg",
+          "x-request-id": "req_voice_speak",
+        },
+        body: "FAKE_AUDIO_BYTES",
+      });
+      return;
+    }
+
     await route.fulfill({
       status: 404,
       headers: {
@@ -129,4 +159,21 @@ test("shows request id when ask request fails", async ({ page }) => {
   await expect(page.getByText("Question failed")).toBeVisible();
   await expect(page.getByText(/LLM timeout/)).toBeVisible();
   await expect(page.getByText(/Request ID:/)).toBeVisible();
+});
+
+test("shows read aloud control and triggers voice speak request", async ({ page }) => {
+  await stubApi(page, "success");
+  await page.goto("/");
+
+  await page.getByLabel("Question").fill("Why did revenue drop last week?");
+  await page.getByRole("button", { name: "Ask" }).click();
+
+  await expect(page.getByRole("button", { name: "Read Aloud" })).toBeVisible();
+
+  const speakRequestPromise = page.waitForRequest(
+    (request) => request.method() === "POST" && request.url().endsWith("/voice/speak")
+  );
+
+  await page.getByRole("button", { name: "Read Aloud" }).click();
+  await speakRequestPromise;
 });

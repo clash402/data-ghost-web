@@ -195,6 +195,17 @@ export const askRequestSchema = z.object({
   clarifications: z.record(z.string(), z.unknown()).optional(),
 });
 
+export const voiceTranscribeResponseSchema = z.object({
+  text: z.string(),
+  provider: z.string().optional(),
+  model: z.string().optional(),
+});
+
+export const voiceSpeakRequestSchema = z.object({
+  text: z.string().min(1),
+  voice_id: z.string().nullable().optional(),
+});
+
 export type DatasetColumn = z.infer<typeof datasetColumnSchema>;
 export type DatasetUpload = z.infer<typeof datasetUploadSchema>;
 export type ContextUpload = z.infer<typeof contextUploadSchema>;
@@ -203,3 +214,5 @@ export type ClarificationQuestion = z.infer<typeof clarificationQuestionSchema>;
 export type AskResponse = z.infer<typeof askResponseSchema>;
 export type AskRequest = z.infer<typeof askRequestSchema>;
 export type AnswerChart = z.infer<typeof answerChartSchema>;
+export type VoiceTranscribeResponse = z.infer<typeof voiceTranscribeResponseSchema>;
+export type VoiceSpeakRequest = z.infer<typeof voiceSpeakRequestSchema>;

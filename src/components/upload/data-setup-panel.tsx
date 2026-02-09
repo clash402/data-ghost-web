@@ -121,7 +121,7 @@ export function DataSetupPanel({
           </div>
           <Button
             type="button"
-            size="icon"
+            size="sm"
             variant="ghost"
             className="h-8 w-8 text-muted-foreground hover:text-foreground"
             onClick={onToggleExpanded}
