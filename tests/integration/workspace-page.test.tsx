@@ -216,6 +216,7 @@ describe("WorkspacePage", () => {
 
     await user.click(await screen.findByRole("button", { name: "Start voice input" }));
     expect(askButton).toBeDisabled();
+    expect(screen.getByText("Recording...")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Stop voice input" }));
 

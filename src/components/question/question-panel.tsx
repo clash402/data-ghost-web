@@ -245,6 +245,20 @@ export function QuestionPanel({
             {isRecording ? <FiSquare className="mr-2" /> : <FiMic className="mr-2" />}
             {isRecording ? "Stop" : isTranscribing ? "Transcribing..." : "Voice"}
           </Button>
+          {isRecording ? (
+            <div
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs text-primary"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="flex h-3 items-end gap-0.5" aria-hidden>
+                <span className="h-1 w-1 rounded-full bg-primary/70 animate-pulse" />
+                <span className="h-2 w-1 rounded-full bg-primary animate-pulse [animation-delay:120ms]" />
+                <span className="h-3 w-1 rounded-full bg-primary/80 animate-pulse [animation-delay:240ms]" />
+              </span>
+              <span className="font-medium">Recording...</span>
+            </div>
+          ) : null}
         </div>
 
         {micError ? (
