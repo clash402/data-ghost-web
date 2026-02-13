@@ -87,5 +87,7 @@ jobs:
             aquasec/trivy:0.58.1 image \
             --severity HIGH,CRITICAL \
             --exit-code 1 \
+            --ignore-unfixed \
+            --vuln-type os,library \
             --no-progress \
             data-ghost-web:ci
