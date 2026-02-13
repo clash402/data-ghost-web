@@ -72,8 +72,6 @@ function setupMicrophoneMocks() {
 
     public state: RecordingState = "inactive";
 
-    constructor(_stream: MediaStream) {}
-
     start() {
       this.state = "recording";
     }
@@ -196,11 +194,11 @@ describe("WorkspacePage", () => {
     let resolveTranscribe:
       | ((value: Awaited<ReturnType<typeof endpoints.transcribeVoice>>) => void)
       | undefined;
-    const transcribePromise = new Promise<Awaited<ReturnType<typeof endpoints.transcribeVoice>>>(
-      (resolve) => {
-        resolveTranscribe = resolve;
-      }
-    );
+    const transcribePromise = new Promise<
+      Awaited<ReturnType<typeof endpoints.transcribeVoice>>
+    >((resolve) => {
+      resolveTranscribe = resolve;
+    });
 
     mockedTranscribeVoice.mockReturnValue(transcribePromise);
 
@@ -271,7 +269,9 @@ describe("WorkspacePage", () => {
       await screen.findByRole("button", { name: "Expand data setup" })
     ).toBeInTheDocument();
     expect(screen.getByText("orders.csv")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Upload Dataset" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Upload Dataset" })
+    ).not.toBeInTheDocument();
 
     const user = userEvent.setup();
     await user.click(screen.getByRole("button", { name: "Expand data setup" }));
@@ -280,7 +280,9 @@ describe("WorkspacePage", () => {
       await screen.findByRole("button", { name: "Collapse data setup" })
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Upload Dataset" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Upload Context Docs" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Upload Context Docs" })
+    ).toBeInTheDocument();
   });
 
   it("starts with setup expanded when no dataset exists", async () => {
@@ -333,7 +335,9 @@ describe("WorkspacePage", () => {
     expect(
       await screen.findByRole("button", { name: "Expand data setup" })
     ).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Upload Dataset" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Upload Dataset" })
+    ).not.toBeInTheDocument();
   });
 
   it("handles clarification follow-up flow and renders final answer", async () => {
@@ -404,7 +408,9 @@ describe("WorkspacePage", () => {
       },
     });
 
-    expect(await screen.findByRole("heading", { name: "Revenue Dipped" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Revenue Dipped" })
+    ).toBeInTheDocument();
     expect(screen.getByText("Request ID: req_ask_2")).toBeInTheDocument();
   });
 });

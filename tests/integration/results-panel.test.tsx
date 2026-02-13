@@ -25,7 +25,7 @@ class AudioMock {
 
   play = vi.fn().mockResolvedValue(undefined);
 
-  constructor(_src?: string) {
+  constructor() {
     AudioMock.instances.push(this);
   }
 }

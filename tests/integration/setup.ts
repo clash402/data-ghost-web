@@ -1,13 +1,14 @@
+/* eslint-disable class-methods-use-this */
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 
 class ResizeObserverMock {
-  observe() {}
+  observe = () => {};
 
-  unobserve() {}
+  unobserve = () => {};
 
-  disconnect() {}
+  disconnect = () => {};
 }
 
 if (!globalThis.ResizeObserver) {

@@ -311,7 +311,9 @@ export function ResultsPanel({
 
   return (
     <div className="min-w-0 space-y-4">
-      <Card className={cn("min-w-0 border-primary/35 shadow-md shadow-primary/10", className)}>
+      <Card
+        className={cn("min-w-0 border-primary/35 shadow-md shadow-primary/10", className)}
+      >
         <CardHeader>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <CardTitle className="text-2xl">
@@ -325,7 +327,11 @@ export function ResultsPanel({
               }}
               disabled={isGeneratingAudio}
             >
-              {isSpeaking ? <FiSquare className="mr-2" /> : <FiVolume2 className="mr-2" />}
+              {isSpeaking ? (
+                <FiSquare className="mr-2" />
+              ) : (
+                <FiVolume2 className="mr-2" />
+              )}
               {isSpeaking
                 ? "Stop"
                 : isGeneratingAudio
