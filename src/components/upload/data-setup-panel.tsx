@@ -1,12 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import {
-  FiChevronDown,
-  FiChevronUp,
-  FiDatabase,
-  FiUploadCloud,
-} from "react-icons/fi";
+import { FiChevronDown, FiChevronUp, FiDatabase, FiUploadCloud } from "react-icons/fi";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -143,7 +138,9 @@ export function DataSetupPanel({
 
             <div className="rounded-lg border border-border bg-background/80 p-4">
               {isSummaryLoading ? (
-                <p className="text-sm text-muted-foreground">Loading dataset summary...</p>
+                <p className="text-sm text-muted-foreground">
+                  Loading dataset summary...
+                </p>
               ) : summary ? (
                 <div className="space-y-3">
                   <div className="grid gap-3 sm:grid-cols-3">
@@ -157,7 +154,9 @@ export function DataSetupPanel({
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">
                         Rows
                       </p>
-                      <p className="text-sm font-semibold">{formatNumber(summary.rows)}</p>
+                      <p className="text-sm font-semibold">
+                        {formatNumber(summary.rows)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs uppercase tracking-wide text-muted-foreground">
@@ -323,8 +322,7 @@ export function DataSetupPanel({
                       </div>
                       <p className="mt-1 text-xs text-muted-foreground">
                         {typeof doc.pages === "number" ? `Pages: ${doc.pages}` : null}
-                        {typeof doc.pages === "number" &&
-                        typeof doc.chunks === "number"
+                        {typeof doc.pages === "number" && typeof doc.chunks === "number"
                           ? " · "
                           : null}
                         {typeof doc.chunks === "number" ? `Chunks: ${doc.chunks}` : null}

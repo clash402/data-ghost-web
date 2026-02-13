@@ -189,7 +189,9 @@ export function QuestionPanel({
       recorder.start();
       setIsRecording(true);
     } catch {
-      setMicError("Unable to access microphone. Check browser permissions and try again.");
+      setMicError(
+        "Unable to access microphone. Check browser permissions and try again."
+      );
     }
   }
 
@@ -203,7 +205,12 @@ export function QuestionPanel({
   }
 
   return (
-    <Card className={cn("border-primary/45 bg-primary/5 shadow-md shadow-primary/10", className)}>
+    <Card
+      className={cn(
+        "border-primary/45 bg-primary/5 shadow-md shadow-primary/10",
+        className
+      )}
+    >
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-2xl">
           <FiHelpCircle />
@@ -273,7 +280,9 @@ export function QuestionPanel({
             <AlertTitle>Voice transcription failed</AlertTitle>
             <AlertDescription>
               {transcribeError}
-              {transcribeErrorRequestId ? ` (Request ID: ${transcribeErrorRequestId})` : ""}
+              {transcribeErrorRequestId
+                ? ` (Request ID: ${transcribeErrorRequestId})`
+                : ""}
             </AlertDescription>
           </Alert>
         ) : null}

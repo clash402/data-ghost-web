@@ -15,7 +15,7 @@ self.addEventListener("install", (event) => {
     caches
       .open(STATIC_CACHE_NAME)
       .then((cache) => cache.addAll(APP_SHELL_FILES))
-      .then(() => self.skipWaiting()),
+      .then(() => self.skipWaiting())
   );
 });
 
@@ -35,10 +35,10 @@ self.addEventListener("activate", (event) => {
             }
 
             return Promise.resolve(false);
-          }),
-        ),
+          })
+        )
       )
-      .then(() => self.clients.claim()),
+      .then(() => self.clients.claim())
   );
 });
 
@@ -75,7 +75,7 @@ self.addEventListener("fetch", (event) => {
 
         const offlinePage = await caches.match("/offline.html");
         return offlinePage || Response.error();
-      }),
+      })
     );
     return;
   }
@@ -88,6 +88,6 @@ self.addEventListener("fetch", (event) => {
       }
 
       return fetchAndCache(request).catch(() => Response.error());
-    }),
+    })
   );
 });
