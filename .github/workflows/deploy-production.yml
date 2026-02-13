@@ -49,10 +49,15 @@ jobs:
           test -n "$VERCEL_PROJECT_ID"
 
       - name: Pull Vercel production environment
-        run: npx vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
+        run: npx vercel pull --yes --environment=production --cwd "$GITHUB_WORKSPACE" --token="$VERCEL_TOKEN"
+
+      - name: Show Vercel project linkage
+        run: |
+          echo "Workspace: $GITHUB_WORKSPACE"
+          test -f .vercel/project.json && cat .vercel/project.json
 
       - name: Build production deployment artifacts
-        run: npx vercel build --prod --token="$VERCEL_TOKEN"
+        run: npx vercel build --prod --cwd "$GITHUB_WORKSPACE" --token="$VERCEL_TOKEN"
 
       - name: Deploy to Vercel production
-        run: npx vercel deploy --prebuilt --prod --token="$VERCEL_TOKEN"
+        run: npx vercel deploy --prebuilt --prod --cwd "$GITHUB_WORKSPACE" --token="$VERCEL_TOKEN"
