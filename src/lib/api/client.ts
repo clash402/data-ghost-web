@@ -4,7 +4,7 @@ import { apiEnvelopeSchema } from "@/lib/api/types";
 
 const DEFAULT_ERROR_MESSAGE = "Something went wrong while contacting Data Ghost API.";
 const DEFAULT_LOCAL_API_BASE_URL = "http://localhost:8000";
-const DEFAULT_PRODUCTION_API_BASE_URL = "https://data-ghost-backend.fly.dev";
+const DEFAULT_PRODUCTION_API_BASE_URL = "https://data-ghost-api.fly.dev";
 
 type JsonBody = Record<string, unknown>;
 

@@ -146,7 +146,7 @@ describe("apiRequest", () => {
     });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://data-ghost-backend.fly.dev/health",
+      "https://data-ghost-api.fly.dev/health",
       expect.anything()
     );
   });
