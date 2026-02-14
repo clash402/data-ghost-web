@@ -75,7 +75,9 @@ function isLocalhostBaseUrl(baseUrl: string) {
 function getApiBaseUrl() {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
   const isProduction = process.env.NODE_ENV === "production";
-  const useLocalApiInProd = isTruthyEnvValue(process.env.NEXT_PUBLIC_USE_LOCAL_API_IN_PROD);
+  const useLocalApiInProd = isTruthyEnvValue(
+    process.env.NEXT_PUBLIC_USE_LOCAL_API_IN_PROD
+  );
 
   if (isProduction) {
     if (useLocalApiInProd) {

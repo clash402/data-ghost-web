@@ -170,7 +170,10 @@ describe("apiRequest", () => {
       schema: successSchema,
     });
 
-    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8000/health", expect.anything());
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:8000/health",
+      expect.anything()
+    );
   });
 
   it("throws when NEXT_PUBLIC_API_BASE_URL is missing", async () => {
