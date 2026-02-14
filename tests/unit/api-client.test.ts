@@ -127,6 +127,52 @@ describe("apiRequest", () => {
     });
   });
 
+  it("uses Fly backend in production when localhost is configured", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: { ok: true } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "http://localhost:8000");
+    vi.stubGlobal("fetch", fetchMock);
+
+    await apiRequest({
+      path: "/health",
+      requestId: "req_from_client",
+      schema: successSchema,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://data-ghost-backend.fly.dev/health",
+      expect.anything()
+    );
+  });
+
+  it("keeps localhost in production when NEXT_PUBLIC_USE_LOCAL_API_IN_PROD=true", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ data: { ok: true } }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      })
+    );
+
+    vi.stubEnv("NODE_ENV", "production");
+    vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "https://api.example.com");
+    vi.stubEnv("NEXT_PUBLIC_USE_LOCAL_API_IN_PROD", "true");
+    vi.stubGlobal("fetch", fetchMock);
+
+    await apiRequest({
+      path: "/health",
+      requestId: "req_from_client",
+      schema: successSchema,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith("http://localhost:8000/health", expect.anything());
+  });
+
   it("throws when NEXT_PUBLIC_API_BASE_URL is missing", async () => {
     vi.unstubAllEnvs();
 

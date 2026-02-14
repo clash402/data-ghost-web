@@ -3,6 +3,8 @@ import type { ZodTypeAny } from "zod";
 import { apiEnvelopeSchema } from "@/lib/api/types";
 
 const DEFAULT_ERROR_MESSAGE = "Something went wrong while contacting Data Ghost API.";
+const DEFAULT_LOCAL_API_BASE_URL = "http://localhost:8000";
+const DEFAULT_PRODUCTION_API_BASE_URL = "https://data-ghost-backend.fly.dev";
 
 type JsonBody = Record<string, unknown>;
 
@@ -53,8 +55,37 @@ export type ApiBinaryResponse = {
   requestId: string;
 };
 
+function normalizeBaseUrl(baseUrl: string) {
+  return baseUrl.trim().replace(/\/$/, "");
+}
+
+function isTruthyEnvValue(value: string | undefined) {
+  return value?.trim().toLowerCase() === "true";
+}
+
+function isLocalhostBaseUrl(baseUrl: string) {
+  try {
+    const parsedUrl = new URL(baseUrl);
+    return parsedUrl.hostname === "localhost" || parsedUrl.hostname === "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
 function getApiBaseUrl() {
   const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const isProduction = process.env.NODE_ENV === "production";
+  const useLocalApiInProd = isTruthyEnvValue(process.env.NEXT_PUBLIC_USE_LOCAL_API_IN_PROD);
+
+  if (isProduction) {
+    if (useLocalApiInProd) {
+      return normalizeBaseUrl(DEFAULT_LOCAL_API_BASE_URL);
+    }
+
+    if (!baseUrl || isLocalhostBaseUrl(baseUrl)) {
+      return normalizeBaseUrl(DEFAULT_PRODUCTION_API_BASE_URL);
+    }
+  }
 
   if (!baseUrl) {
     throw new ApiClientError({
@@ -64,7 +95,7 @@ function getApiBaseUrl() {
     });
   }
 
-  return baseUrl.replace(/\/$/, "");
+  return normalizeBaseUrl(baseUrl);
 }
 
 function makeHeaders(requestId: string, body?: JsonBody | FormData, accept?: string) {
